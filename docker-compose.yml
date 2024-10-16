@@ -1,0 +1,79 @@
+name: shared-services
+
+services:
+  npm:
+    image: "jc21/nginx-proxy-manager:latest"
+    container_name: npm
+    restart: unless-stopped
+    ports:
+      - "80:80" # Public HTTP Port
+      - "81:81" # Admin Web Port
+      - "443:443" # Public HTTPS Port
+    volumes:
+      - ./npm-data:/data
+      - ./letsencrypt:/etc/letsencrypt
+    networks:
+      - shared_network
+
+  mariadb:
+    image: mariadb:10.11
+    container_name: mariadb-master
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./conf/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ~/Data/mariadb:/var/lib/mysql
+    environment:
+      - TZ=${TIME_ZONE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    networks:
+      - shared_network
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.9
+    container_name: meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    volumes:
+      - ~/Data/meilisearch:/meili_data
+    environment:
+      - TZ=${TIME_ZONE}
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+    networks:
+      - shared_network
+
+  memcached:
+    image: memcached:alpine
+    container_name: memcached
+    restart: unless-stopped
+    ports:
+      - "11211:11211"
+    networks:
+      - shared_network
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    hostname: redis
+    restart: unless-stopped
+    ports:
+      - 6379:6379
+    volumes:
+      - ~/Data/redis:/data
+      # - ./conf/redis.conf:/usr/local/conf/redis.conf
+    # 컨테이너에 docker label을 이용해서 메타데이터 추가(Adding metadata to containers with docker labels)
+    labels:
+      - "name=redis"
+      - "mode=standalone"
+    environment:
+      - TZ=${TIME_ZONE}
+    # command: redis-server /usr/local/conf/redis.conf
+    command: redis-server
+    networks:
+      - shared_network
+
+networks:
+  shared_network:
+    external: true
